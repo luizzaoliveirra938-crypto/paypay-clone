@@ -208,7 +208,7 @@ const ja = {
   statusBlocked: "停止",
   adminTitle: "PayPay サポート管理",
   adminUsers: "アカウント",
-  adminTickets: "お問い合わせ",
+  adminTickets: "Inbox",
   adminOverview: "ホーム",
   colName: "氏名",
   colId: "PayPay ID",

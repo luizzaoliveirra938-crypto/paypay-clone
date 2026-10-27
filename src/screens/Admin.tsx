@@ -11,12 +11,16 @@ type AdminTab = "home" | "users" | "tickets";
 export function AdminApp() {
   const s = useStore();
   const t = useT();
-  const [tab, setTab] = useState<AdminTab>("users");
+  const [tab, setTab] = useState<AdminTab>("tickets");
   const [picked, setPicked] = useState<string | null>(s.tickets[0]?.id ?? null);
 
   useEffect(() => {
     s.syncNow();
   }, [s.syncNow]);
+
+  useEffect(() => {
+    if (!picked && s.tickets[0]) setPicked(s.tickets[0].id);
+  }, [picked, s.tickets]);
 
   if (!s.isAdmin) return <AdminLogin />;
 
@@ -34,16 +38,16 @@ export function AdminApp() {
           <span>{t("adminTitle")}</span>
         </div>
         <nav className="admin-nav">
-          <button className={tab === "home" ? "on" : ""} type="button" onClick={() => setTab("home")}>
-            {t("adminOverview")}
+          <button className={tab === "tickets" ? "on" : ""} type="button" onClick={() => setTab("tickets")}>
+            {t("adminTickets")}
+            <em className={unread > 0 ? "hot" : ""}>{unread > 0 ? unread : s.tickets.length}</em>
           </button>
           <button className={tab === "users" ? "on" : ""} type="button" onClick={() => setTab("users")}>
             {t("adminUsers")}
             <em>{users.length}</em>
           </button>
-          <button className={tab === "tickets" ? "on" : ""} type="button" onClick={() => setTab("tickets")}>
-            {t("adminTickets")}
-            {unread > 0 && <em className="hot">{unread}</em>}
+          <button className={tab === "home" ? "on" : ""} type="button" onClick={() => setTab("home")}>
+            {t("adminOverview")}
           </button>
         </nav>
         <div className="admin-side-foot">

@@ -785,7 +785,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sendTo,
       receiveFrom,
     };
-  }, [state]);
+  }, [applyRemote, pullRemote, state]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

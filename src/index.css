@@ -1755,14 +1755,18 @@ body:has(.admin-login) {
   .admin-side nav,
   .admin-nav {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     width: 100%;
     gap: 6px;
   }
   .admin-side nav button,
   .admin-nav button {
-    width: 100%;
+    width: auto;
+    flex: 1;
     min-height: 44px;
+    justify-content: center;
+    font-size: 13px;
+    padding: 10px 8px;
   }
   .admin-side-foot {
     margin: 8px 0 0;
@@ -1775,7 +1779,12 @@ body:has(.admin-login) {
     grid-template-columns: 1fr;
     min-height: 0;
   }
-  .desk-list { display: none; }
+  .desk-list {
+    display: block;
+    max-height: 30vh;
+    border-right: none;
+    border-bottom: 1px solid var(--gray-100);
+  }
   .desk-chat { min-height: 0; height: 100%; }
   .ticket-switch > button { min-width: 0; flex: 1; }
 }
