@@ -1418,7 +1418,7 @@ body:has(.admin-login) {
 .admin-side nav em.hot { background: var(--red); color: #fff; }
 .admin-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
 .admin-side-foot button { font-size: 13px; font-weight: 700; color: var(--gray-500); text-align: left; padding: 8px; }
-.admin-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+.admin-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .admin-top {
   padding: 18px 24px 8px;
   display: flex;
@@ -1550,11 +1550,13 @@ body:has(.admin-login) {
 .desk {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   background: #fff;
   border-radius: 16px;
   overflow: hidden;
   min-height: 0;
+  flex: 1;
   box-shadow: var(--shadow-1);
 }
 .desk-list {
@@ -1584,7 +1586,7 @@ body:has(.admin-login) {
   overflow: hidden;
 }
 .desk-time { font-size: 10px; color: var(--gray-400); }
-.desk-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.desk-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; height: 100%; }
 .ticket-switch {
   display: flex;
   flex-wrap: wrap;
@@ -1773,20 +1775,54 @@ body:has(.admin-login) {
     flex-direction: column;
     width: 100%;
   }
-  .admin-top { padding: 12px 16px 4px; flex-wrap: wrap; }
-  .admin-home, .admin-users, .admin-main .desk { padding: 8px 12px 16px; }
+  .admin-brand { display: none; }
+  .admin-side-foot {
+    display: flex;
+    flex-direction: row;
+    margin: 4px 0 0;
+  }
+  .admin-side-foot button { flex: 1; padding: 4px; font-size: 12px; text-align: center; }
+  .admin-top {
+    padding: 8px 12px 0;
+    flex-wrap: wrap;
+  }
+  .admin-top p { display: none; }
+  .admin-top h1 { font-size: 18px; }
+  .admin-home, .admin-users { overflow: auto; }
+  .admin-home, .admin-users, .admin-main .desk { padding: 8px 12px 8px; }
   .desk {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
+    border-radius: 12px;
   }
   .desk-list {
     display: block;
-    max-height: 30vh;
+    max-height: 18vh;
     border-right: none;
     border-bottom: 1px solid var(--gray-100);
   }
-  .desk-chat { min-height: 0; height: 100%; }
-  .ticket-switch > button { min-width: 0; flex: 1; }
+  .desk-chat {
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+  }
+  .ticket-meta { display: none; }
+  .ticket-switch { padding: 6px 8px; }
+  .ticket-switch > button { min-width: 0; flex: 1; padding: 6px 8px; }
+  .admin-root .chat-embed {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+  .admin-root .chat-compose {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.12);
+  }
 }
 
 html.pp-bleed,
