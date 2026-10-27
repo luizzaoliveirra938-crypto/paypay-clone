@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { seedNotices, seedTxs } from "./data";
 import { ticketNo, uid } from "./format";
 import type {
   AccountStatus,
@@ -24,23 +23,8 @@ import type {
 } from "./types";
 
 const DATA_KEY = "paypay-platform-v1";
-const OLD_KEY = "paypay-clone-v1";
 const SESSION_KEY = "paypay-session-id";
-
-const yukiWallet: Wallet = {
-  money: 24850,
-  moneyLite: 1200,
-  points: 1284,
-  investedPoints: 3500,
-  creditLimit: 300000,
-  creditUsed: 21480,
-  bankBalance: 186420,
-  autoCharge: true,
-  autoChargeAmount: 10000,
-  usePoints: false,
-  hideAmounts: false,
-  method: "balance",
-};
+const DEMO_IDS = new Set(["acc_yuki", "acc_misaki", "acc_kenta"]);
 
 const favs = ["card", "points", "invest", "bank", "send", "bills", "nearby", "step"];
 
@@ -107,104 +91,19 @@ function seedAccounts(): UserAccount[] {
       step: "プラチナ",
       stepProgress: 1,
     }),
-    account({
-      id: "acc_yuki",
-      name: "田中 ゆうき",
-      handle: "yuki.tanaka",
-      phone: "090-1234-5678",
-      password: "1234",
-      role: "user",
-      status: "active",
-      createdAt: ago(24 * 40),
-      step: "シルバー",
-      stepProgress: 0.72,
-      wallet: { ...yukiWallet },
-      txs: seedTxs(),
-      notices: seedNotices.map((n) => ({ ...n })),
-    }),
-    account({
-      id: "acc_misaki",
-      name: "佐藤 美咲",
-      handle: "misaki_s",
-      phone: "080-5555-1111",
-      password: "1234",
-      role: "user",
-      status: "frozen",
-      freezeReason: "Unusual sign-in from a new device. Identity check required.",
-      createdAt: ago(24 * 18),
-      step: "グリーン",
-      stepProgress: 0.3,
-      wallet: {
-        ...emptyWallet(),
-        money: 8420,
-        points: 210,
-        bankBalance: 62000,
-      },
-    }),
-    account({
-      id: "acc_kenta",
-      name: "鈴木 健太",
-      handle: "kenta_s",
-      phone: "070-2222-8899",
-      password: "1234",
-      role: "user",
-      status: "restricted",
-      freezeReason: "Payment review in progress.",
-      createdAt: ago(24 * 12),
-      step: "シルバー",
-      stepProgress: 0.4,
-      wallet: {
-        ...emptyWallet(),
-        money: 15600,
-        points: 540,
-        bankBalance: 88000,
-        autoCharge: true,
-      },
-    }),
   ];
 }
 
+function scrubDemo(data: PlatformData): PlatformData {
+  return {
+    ...data,
+    accounts: data.accounts.filter((a) => !DEMO_IDS.has(a.id) && (a.role === "admin" || !["yuki.tanaka", "misaki_s", "kenta_s"].includes(a.handle))),
+    tickets: data.tickets.filter((tk) => !DEMO_IDS.has(tk.accountId) && tk.id !== "tk_seed_misaki"),
+  };
+}
+
 function seedTickets(): Ticket[] {
-  const t0 = new Date(Date.now() - 1000 * 60 * 50).toISOString();
-  const t1 = new Date(Date.now() - 1000 * 60 * 48).toISOString();
-  const t2 = new Date(Date.now() - 1000 * 60 * 12).toISOString();
-  return [
-    {
-      id: "tk_seed_misaki",
-      number: "PP261026-10482",
-      accountId: "acc_misaki",
-      category: "restriction",
-      subject: "利用制限について",
-      status: "open",
-      createdAt: t0,
-      updatedAt: t2,
-      unreadUser: 0,
-      unreadAgent: 1,
-      messages: [
-        {
-          id: "m1",
-          from: "system",
-          authorName: "",
-          text: "お問い合わせを受け付けました。チケット番号は PP261026-10482 です。",
-          at: t0,
-        },
-        {
-          id: "m2",
-          from: "user",
-          authorName: "佐藤 美咲",
-          text: "突然PayPayが使えなくなりました。制限の理由を教えてください。解除をお願いします。",
-          at: t1,
-        },
-        {
-          id: "m3",
-          from: "user",
-          authorName: "佐藤 美咲",
-          text: "本人確認の書類はすでに提出済みです。確認をお願いします。",
-          at: t2,
-        },
-      ],
-    },
-  ];
+  return [];
 }
 
 type PlatformData = {
@@ -222,42 +121,18 @@ function defaultData(): PlatformData {
 function loadData(): PlatformData {
   try {
     const raw = localStorage.getItem(DATA_KEY);
+    let data = defaultData();
     if (raw) {
       const parsed = JSON.parse(raw) as PlatformData;
-      const base = defaultData();
-      return {
+      data = {
         lang: parsed.lang === "en" ? "en" : "ja",
-        accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : base.accounts,
-        tickets: Array.isArray(parsed.tickets) ? parsed.tickets : base.tickets,
+        accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : data.accounts,
+        tickets: Array.isArray(parsed.tickets) ? parsed.tickets : data.tickets,
       };
     }
-    const old = localStorage.getItem(OLD_KEY);
-    const data = defaultData();
-    if (old) {
-      const parsed = JSON.parse(old) as {
-        user?: User;
-        wallet?: Wallet;
-        txs?: Transaction[];
-        notices?: UserAccount["notices"];
-        favorites?: string[];
-        lang?: Lang;
-      };
-      data.lang = parsed.lang === "en" ? "en" : "ja";
-      data.accounts = data.accounts.map((a) =>
-        a.id === "acc_yuki"
-          ? {
-              ...a,
-              name: parsed.user?.name ?? a.name,
-              handle: parsed.user?.handle ?? a.handle,
-              phone: parsed.user?.phone ?? a.phone,
-              wallet: { ...a.wallet, ...parsed.wallet },
-              txs: parsed.txs?.length ? parsed.txs : a.txs,
-              notices: parsed.notices?.length ? parsed.notices : a.notices,
-              favorites: parsed.favorites?.length ? parsed.favorites : a.favorites,
-              lang: parsed.lang === "en" ? "en" : a.lang,
-            }
-          : a,
-      );
+    data = scrubDemo(data);
+    if (!data.accounts.some((a) => a.role === "admin")) {
+      data.accounts = [...seedAccounts(), ...data.accounts];
     }
     return data;
   } catch {
@@ -267,7 +142,15 @@ function loadData(): PlatformData {
 
 function loadSession(): string | null {
   try {
-    return sessionStorage.getItem(SESSION_KEY);
+    const id = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY);
+    if (!id || DEMO_IDS.has(id)) {
+      localStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    localStorage.setItem(SESSION_KEY, id);
+    sessionStorage.setItem(SESSION_KEY, id);
+    return id;
   } catch {
     return null;
   }
@@ -366,12 +249,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { sessionId, ...data } = state;
     localStorage.setItem(DATA_KEY, JSON.stringify(data));
-    if (sessionId) sessionStorage.setItem(SESSION_KEY, sessionId);
-    else sessionStorage.removeItem(SESSION_KEY);
+    if (sessionId) {
+      localStorage.setItem(SESSION_KEY, sessionId);
+      sessionStorage.setItem(SESSION_KEY, sessionId);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+    }
   }, [state]);
 
   useEffect(() => {
+    const restoreSession = () => {
+      const id = loadSession();
+      setState((s) => (s.sessionId === id ? s : { ...s, sessionId: id }));
+    };
     const onStorage = (e: StorageEvent) => {
+      if (e.key === SESSION_KEY) {
+        const id = e.newValue && !DEMO_IDS.has(e.newValue) ? e.newValue : null;
+        setState((s) => (s.sessionId === id ? s : { ...s, sessionId: id }));
+        return;
+      }
       if (e.key !== DATA_KEY || !e.newValue) return;
       try {
         const parsed = JSON.parse(e.newValue) as PlatformData;
@@ -385,8 +282,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
     };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") restoreSession();
+    };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("pageshow", restoreSession);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("pageshow", restoreSession);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const api = useMemo<Store>(() => {

@@ -23,7 +23,7 @@ export function InstallBanner() {
 
   useEffect(() => {
     if (isStandalone()) return;
-    if (sessionStorage.getItem("pp-install-dismiss")) return;
+    if (localStorage.getItem("pp-install-dismiss")) return;
     const onBIP = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BIP);
@@ -37,7 +37,7 @@ export function InstallBanner() {
   if (!show || isStandalone()) return null;
 
   const dismiss = () => {
-    sessionStorage.setItem("pp-install-dismiss", "1");
+    localStorage.setItem("pp-install-dismiss", "1");
     setShow(false);
   };
 

@@ -17,6 +17,27 @@ import { useStore } from "./store";
 import type { Overlay, Tab } from "./types";
 import { BottomNav, NavHead, StatusBar, Success, Toast } from "./ui";
 
+function useBleed() {
+  const [bleed, setBleed] = useState(() =>
+    typeof document !== "undefined" && document.documentElement.classList.contains("pp-bleed"),
+  );
+  useEffect(() => {
+    const apply = () => {
+      const coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+      const stand =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+      const on = window.innerWidth <= 1024 || coarse || stand;
+      document.documentElement.classList.toggle("pp-bleed", on);
+      setBleed(on);
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  }, []);
+  return bleed;
+}
+
 export default function Root() {
   const [hash, setHash] = useState(() => location.hash);
   useEffect(() => {
@@ -31,6 +52,7 @@ export default function Root() {
 function App() {
   const store = useStore();
   const t = useT();
+  const bleed = useBleed();
   const [tab, setTab] = useState<Tab>("home");
   const [stack, setStack] = useState<Overlay[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -87,10 +109,10 @@ function App() {
   const loggedOut = !store.sessionId;
 
   return (
-    <div className="stage">
-      <div className="device">
-        <div className="island" />
-        <StatusBar light={lightStatus} />
+    <div className={`stage${bleed ? " bleed" : ""}`}>
+      <div className={`device${bleed ? " bleed" : ""}`}>
+        {!bleed && <div className="island" />}
+        {!bleed && <StatusBar light={lightStatus} />}
         <div className="app">
           {loggedOut ? (
             !splash && <AuthScreen />
@@ -122,7 +144,7 @@ function App() {
             </>
           )}
 
-          {!splash && store.status !== "frozen" && store.status !== "blocked" && <InstallBanner />}
+          {!splash && !loggedOut && store.status !== "frozen" && store.status !== "blocked" && <InstallBanner />}
           {toast && <Toast text={toast} />}
           {splash && (
             <div className="splash">
@@ -133,7 +155,7 @@ function App() {
             </div>
           )}
         </div>
-        <div className="home-indicator" />
+        {!bleed && <div className="home-indicator" />}
       </div>
     </div>
   );

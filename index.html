@@ -12,6 +12,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PayPay" />
     <title>PayPay</title>
+    <script>
+      (function () {
+        try {
+          var coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+          var stand =
+            window.matchMedia("(display-mode: standalone)").matches ||
+            (navigator.standalone === true);
+          if (window.innerWidth <= 1024 || coarse || stand) {
+            document.documentElement.classList.add("pp-bleed");
+          }
+        } catch (e) {
+          document.documentElement.classList.add("pp-bleed");
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

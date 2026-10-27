@@ -88,19 +88,6 @@ export function AuthScreen() {
         </div>
       </form>
       <div className="auth-demo">
-        <div className="auth-demo-h">{t("demoHint")}</div>
-        <p>
-          {t("demoUser")} · <code>yuki.tanaka</code> / 1234
-        </p>
-        <p>
-          {t("demoFrozen")} · <code>misaki_s</code> / 1234
-        </p>
-        <p>
-          {t("demoRestricted")} · <code>kenta_s</code> / 1234
-        </p>
-        <p>
-          {t("adminLogin")} · <code>admin</code> / admin1234
-        </p>
         <button className="auth-admin" type="button" onClick={() => (location.hash = "#/admin")}>
           {t("adminConsole")} →
         </button>

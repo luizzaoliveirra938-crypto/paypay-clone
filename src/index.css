@@ -1387,18 +1387,27 @@ body:has(.admin-login) {
   font-size: 13px;
   padding: 0 8px 18px;
 }
-.admin-side nav { display: flex; flex-direction: column; gap: 4px; }
-.admin-side nav button {
+.admin-side nav,
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.admin-side nav button,
+.admin-nav button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  width: 100%;
+  padding: 12px 14px;
   border-radius: 10px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   text-align: left;
 }
-.admin-side nav button.on { background: var(--red-tint); color: var(--red); }
+.admin-side nav button.on,
+.admin-nav button.on { background: var(--red-tint); color: var(--red); }
 .admin-side nav em {
   font-style: normal;
   font-size: 11px;
@@ -1702,18 +1711,33 @@ body:has(.admin-login) {
   .admin-root { flex-direction: column; }
   .admin-side {
     width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 8px 12px;
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 12px 8px;
     overflow: auto;
     border-right: none;
     border-bottom: 1px solid var(--gray-100);
   }
-  .admin-brand { padding: 0 8px 0 0; }
+  .admin-brand { padding: 4px 8px 10px; }
   .admin-brand span { white-space: nowrap; }
-  .admin-side nav { flex-direction: row; flex-wrap: wrap; }
-  .admin-side-foot { margin: 0 0 0 auto; flex-direction: row; flex-wrap: wrap; }
+  .admin-side nav,
+  .admin-nav {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+  }
+  .admin-side nav button,
+  .admin-nav button {
+    width: 100%;
+    min-height: 44px;
+  }
+  .admin-side-foot {
+    margin: 8px 0 0;
+    flex-direction: column;
+    width: 100%;
+  }
   .admin-top { padding: 12px 16px 4px; flex-wrap: wrap; }
   .admin-home, .admin-users, .admin-main .desk { padding: 8px 12px 16px; }
   .desk {
@@ -1723,32 +1747,91 @@ body:has(.admin-login) {
   .desk-list { display: none; }
   .desk-chat { min-height: 0; height: 100%; }
   .ticket-switch > button { min-width: 0; flex: 1; }
-  .status { padding-left: 16px; padding-right: 16px; }
 }
 
-@media (max-width: 1024px), (display-mode: standalone), (display-mode: fullscreen) {
-  .stage {
+html.pp-bleed,
+html.pp-bleed body {
+  background: #fff;
+}
+html.pp-bleed body {
+  overflow: hidden;
+}
+
+@media (max-width: 1024px), (display-mode: standalone), (display-mode: fullscreen), (hover: none) and (pointer: coarse) {
+  .stage,
+  .stage.bleed {
     padding: 0;
     background: #fff;
     min-height: 100dvh;
+    min-height: 100svh;
   }
-  .device {
+  .device,
+  .device.bleed {
     width: 100%;
     max-width: none;
     height: 100%;
     height: 100dvh;
+    height: 100svh;
     max-height: none;
     aspect-ratio: auto;
     border-radius: 0;
     box-shadow: none;
   }
-  .island { display: none; }
-  .home-indicator { display: none; }
+  .island,
+  .home-indicator,
   .status {
-    padding-top: max(12px, env(safe-area-inset-top, 0px));
-    height: auto;
-    min-height: 48px;
+    display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
+  .auth-hero {
+    padding-top: max(28px, calc(12px + env(safe-area-inset-top, 0px)));
+  }
+  .home-header,
+  .topbar,
+  .nav-head {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+html.pp-bleed .stage,
+.stage.bleed {
+  padding: 0;
+  background: #fff;
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+html.pp-bleed .device,
+.device.bleed {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  height: 100dvh;
+  height: 100svh;
+  max-height: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+html.pp-bleed .island,
+html.pp-bleed .home-indicator,
+html.pp-bleed .status {
+  display: none !important;
+  height: 0 !important;
+  padding: 0 !important;
+}
+html.pp-bleed .auth-hero,
+.device.bleed .auth-hero {
+  padding-top: max(28px, calc(12px + env(safe-area-inset-top, 0px)));
+}
+html.pp-bleed .home-header,
+html.pp-bleed .topbar,
+html.pp-bleed .nav-head,
+.device.bleed .home-header,
+.device.bleed .topbar,
+.device.bleed .nav-head {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 @media (max-width: 640px) {
@@ -1773,7 +1856,7 @@ body:has(.admin-login) {
     border-radius: 0;
     box-shadow: none;
   }
-  .island, .home-indicator { display: none; }
+  .island, .home-indicator, .status { display: none !important; }
 }
 
 @media (hover: none) {

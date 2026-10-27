@@ -5,7 +5,6 @@ import { accountStatusLabel, ticketCatLabel, ticketStatusLabel, trErr, useT } fr
 import { useStore } from "../store";
 import type { AccountStatus, Ticket, UserAccount } from "../types";
 import { ChatThread } from "./Support";
-import { InstallBanner } from "../Install";
 
 type AdminTab = "home" | "users" | "tickets";
 
@@ -17,7 +16,9 @@ export function AdminApp() {
 
   if (!s.isAdmin) return <AdminLogin />;
 
-  const users = s.accounts.filter((a) => a.role !== "admin");
+  const users = s.accounts.filter(
+    (a) => a.role !== "admin" && !["yuki.tanaka", "misaki_s", "kenta_s"].includes(a.handle),
+  );
   const frozen = users.filter((a) => a.status === "frozen");
   const open = s.tickets.filter((tk) => tk.status === "open" || tk.status === "pending");
   const unread = s.tickets.reduce((n, tk) => n + tk.unreadAgent, 0);
@@ -30,7 +31,7 @@ export function AdminApp() {
           <PayPayMark size={28} color="#FF0033" />
           <span>{t("adminTitle")}</span>
         </div>
-        <nav>
+        <nav className="admin-nav">
           <button className={tab === "home" ? "on" : ""} type="button" onClick={() => setTab("home")}>
             {t("adminOverview")}
           </button>
@@ -105,7 +106,6 @@ export function AdminApp() {
         {tab === "tickets" && (
           <TicketsDesk tickets={s.tickets} accounts={s.accounts} picked={picked} onPick={setPicked} ticket={ticket} />
         )}
-        <InstallBanner />
       </main>
     </div>
   );
@@ -114,7 +114,7 @@ export function AdminApp() {
 function AdminLogin() {
   const s = useStore();
   const t = useT();
-  const [id, setId] = useState("admin");
+  const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -148,9 +148,6 @@ function AdminLogin() {
             {t("loginBtn")}
           </button>
         </form>
-        <p className="credit-note">
-          admin / admin1234
-        </p>
         <button className="auth-switch" type="button" onClick={() => (location.hash = "")}>
           {t("backToApp")}
         </button>
