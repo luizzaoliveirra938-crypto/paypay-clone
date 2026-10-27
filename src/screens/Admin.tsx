@@ -247,7 +247,7 @@ function UsersTable({ users, onOpenTicket }: { users: UserAccount[]; onOpenTicke
     return hay.includes(q.trim().toLowerCase());
   });
   return (
-    <div>
+    <div className="admin-users">
       <input className="admin-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${t("colName")} / ${t("colId")}`} />
       <div className="admin-table-wrap">
         <table className="admin-table">
