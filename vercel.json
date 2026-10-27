@@ -1,0 +1,8 @@
+{
+  "headers": [
+    {
+      "source": "/api/platform",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
+  ]
+}

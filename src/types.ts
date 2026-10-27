@@ -168,6 +168,7 @@ export type UserAccount = {
   status: AccountStatus;
   freezeReason: string;
   createdAt: string;
+  updatedAt?: string;
   verified: boolean;
   step: User["step"];
   stepProgress: number;

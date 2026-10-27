@@ -3,10 +3,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { ticketNo, uid } from "./format";
+import { fingerprint, mergePlatform } from "./platformMerge";
 import type {
   AccountStatus,
   ChatAuthor,
@@ -71,6 +73,7 @@ function account(
     favorites: [...favs],
     lang: "ja",
     freezeReason: "",
+    updatedAt: partial.createdAt || new Date().toISOString(),
     ...partial,
   };
 }
@@ -245,6 +248,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ...loadData(),
     sessionId: loadSession(),
   }));
+  const hydratedRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const lastPushFp = useRef("");
 
   useEffect(() => {
     const { sessionId, ...data } = state;
@@ -256,7 +262,68 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(SESSION_KEY);
     }
+    if (!hydratedRef.current) return;
+    const fp = fingerprint(data);
+    if (fp === lastPushFp.current) return;
+    dirtyRef.current = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch("/api/platform", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accounts: data.accounts, tickets: data.tickets, lang: data.lang }),
+        });
+        if (!res.ok) return;
+        const merged = (await res.json()) as PlatformData;
+        lastPushFp.current = fingerprint(merged);
+        setState((s) => {
+          const next = mergePlatform(s, merged);
+          if (fingerprint(next) === fingerprint(s)) return s;
+          return { ...s, accounts: next.accounts, tickets: next.tickets };
+        });
+      } catch {
+        /* offline: keep local copy */
+      } finally {
+        dirtyRef.current = false;
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [state]);
+
+  useEffect(() => {
+    let stop = false;
+    const pull = async () => {
+      if (dirtyRef.current) return;
+      try {
+        const res = await fetch("/api/platform", { cache: "no-store" });
+        if (!res.ok || stop) return;
+        const remote = (await res.json()) as PlatformData;
+        setState((s) => {
+          const next = mergePlatform(s, remote);
+          if (fingerprint(next) === fingerprint(s)) return s;
+          return { ...s, accounts: next.accounts, tickets: next.tickets };
+        });
+      } catch {
+        /* offline */
+      }
+    };
+    (async () => {
+      await pull();
+      if (stop) return;
+      hydratedRef.current = true;
+      setState((s) => ({ ...s }));
+    })();
+    const id = window.setInterval(pull, 3000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void pull();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop = true;
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   useEffect(() => {
     const restoreSession = () => {
@@ -301,7 +368,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const patchMe = (fn: (a: UserAccount) => UserAccount) => {
       if (!state.sessionId) return;
       const id = state.sessionId;
-      setState((s) => ({ ...s, accounts: mapAcc(s.accounts, id, fn) }));
+      const now = new Date().toISOString();
+      setState((s) => ({
+        ...s,
+        accounts: mapAcc(s.accounts, id, (a) => ({ ...fn(a), updatedAt: now })),
+      }));
     };
 
     const pay: Store["pay"] = ({ title, subtitle, amount, merchantId, contactId, kind = "pay" }) => {
@@ -473,10 +544,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }));
       },
       setLang: (lang) => {
+        const now = new Date().toISOString();
         setState((s) => ({
           ...s,
           lang,
-          accounts: s.sessionId ? mapAcc(s.accounts, s.sessionId, (a) => ({ ...a, lang })) : s.accounts,
+          accounts: s.sessionId ? mapAcc(s.accounts, s.sessionId, (a) => ({ ...a, lang, updatedAt: now })) : s.accounts,
         }));
       },
       patchWallet: (p) => patchMe((a) => ({ ...a, wallet: { ...a.wallet, ...p } })),
@@ -509,6 +581,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (state.accounts.some((a) => a.phone.replace(/\D/g, "") === p.replace(/\D/g, ""))) {
           return { ok: false, reason: "errPhoneTaken" };
         }
+        const now = new Date().toISOString();
         const acc = account({
           id: uid("acc"),
           name: n,
@@ -517,7 +590,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           password,
           role: "user",
           status: "active",
-          createdAt: new Date().toISOString(),
+          createdAt: now,
+          updatedAt: now,
           lang: state.lang,
         });
         setState((s) => ({ ...s, accounts: [...s.accounts, acc], sessionId: acc.id }));
@@ -542,6 +616,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           accounts: mapAcc(s.accounts, accountId, (a) => ({
             ...a,
             status,
+            updatedAt: now,
             freezeReason: status === "active" ? "" : reason || a.freezeReason,
             notices: [
               {
@@ -667,11 +742,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }));
       },
       markTicketRead: (ticketId, who) => {
+        const now = new Date().toISOString();
         setState((s) => ({
           ...s,
           tickets: s.tickets.map((tk) =>
             tk.id === ticketId
-              ? { ...tk, unreadUser: who === "user" ? 0 : tk.unreadUser, unreadAgent: who === "agent" ? 0 : tk.unreadAgent }
+              ? {
+                  ...tk,
+                  updatedAt: now,
+                  unreadUser: who === "user" ? 0 : tk.unreadUser,
+                  unreadAgent: who === "agent" ? 0 : tk.unreadAgent,
+                }
               : tk,
           ),
         }));

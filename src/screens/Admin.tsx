@@ -16,9 +16,7 @@ export function AdminApp() {
 
   if (!s.isAdmin) return <AdminLogin />;
 
-  const users = s.accounts.filter(
-    (a) => a.role !== "admin" && !["yuki.tanaka", "misaki_s", "kenta_s"].includes(a.handle),
-  );
+  const users = s.accounts.filter((a) => a.role !== "admin");
   const frozen = users.filter((a) => a.status === "frozen");
   const open = s.tickets.filter((tk) => tk.status === "open" || tk.status === "pending");
   const unread = s.tickets.reduce((n, tk) => n + tk.unreadAgent, 0);
