@@ -83,7 +83,8 @@ function mergePlatform(local, remote) {
 async function readStore() {
   try {
     const result = await get(PATH, { access: "private", useCache: false });
-    if (!result || result.statusCode !== 200) return { data: empty, etag: null };
+    if (!result) return { data: empty, missing: true };
+    if (result.statusCode !== 200) return { error: true };
     const text = await new Response(result.stream).text();
     const parsed = JSON.parse(text);
     return {
@@ -92,44 +93,50 @@ async function readStore() {
         tickets: Array.isArray(parsed.tickets) ? parsed.tickets : [],
         lang: parsed.lang === "en" ? "en" : "ja",
       },
-      etag: result.blob?.etag ?? null,
     };
-  } catch {
-    return { data: empty, etag: null };
+  } catch (err) {
+    const msg = String(err?.message || err || "");
+    if (/not found|404/i.test(msg)) return { data: empty, missing: true };
+    return { error: true, message: msg };
   }
 }
 
-async function writeStore(data, etag) {
+async function writeStore(data) {
   await put(PATH, JSON.stringify(data), {
     access: "private",
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",
     cacheControlMaxAge: 60,
-    ...(etag ? { ifMatch: etag } : {}),
   });
+}
+
+function incomingFrom(body) {
+  if (!body || typeof body !== "object") return null;
+  const accounts = [];
+  const tickets = [];
+  if (Array.isArray(body.accounts)) accounts.push(...body.accounts);
+  if (body.account) accounts.push(body.account);
+  if (Array.isArray(body.tickets)) tickets.push(...body.tickets);
+  if (body.ticket) tickets.push(body.ticket);
+  return { accounts, tickets, lang: body.lang };
 }
 
 export async function handlePlatform(method, body) {
   if (method === "OPTIONS") return { status: 204, data: null };
   if (method === "GET" || method === "HEAD") {
-    const { data } = await readStore();
-    return { status: 200, data };
+    const read = await readStore();
+    if (read.error) return { status: 503, data: { error: "store" } };
+    return { status: 200, data: read.data };
   }
   if (method === "PUT" || method === "POST") {
-    if (!body || typeof body !== "object") return { status: 400, data: { error: "invalid" } };
-    let lastError = null;
-    for (let i = 0; i < 4; i++) {
-      const { data: existing, etag } = await readStore();
-      const merged = mergePlatform(existing, body);
-      try {
-        await writeStore(merged, etag);
-        return { status: 200, data: merged };
-      } catch (err) {
-        lastError = err;
-      }
-    }
-    throw lastError ?? new Error("store");
+    const incoming = incomingFrom(body);
+    if (!incoming) return { status: 400, data: { error: "invalid" } };
+    const read = await readStore();
+    if (read.error) return { status: 503, data: { error: "store" } };
+    const merged = mergePlatform(read.data || empty, incoming);
+    await writeStore(merged);
+    return { status: 200, data: merged };
   }
   return { status: 405, data: { error: "method" } };
 }
@@ -146,20 +153,27 @@ export default async function handler(req, res) {
   }
   let body = null;
   if (req.method === "PUT" || req.method === "POST") {
-    body = await new Promise((resolve, reject) => {
-      let raw = "";
-      req.on("data", (chunk) => {
-        raw += chunk;
+    try {
+      body = await new Promise((resolve, reject) => {
+        let raw = "";
+        req.on("data", (chunk) => {
+          raw += chunk;
+        });
+        req.on("end", () => {
+          try {
+            resolve(raw ? JSON.parse(raw) : null);
+          } catch (err) {
+            reject(err);
+          }
+        });
+        req.on("error", reject);
       });
-      req.on("end", () => {
-        try {
-          resolve(raw ? JSON.parse(raw) : null);
-        } catch (err) {
-          reject(err);
-        }
-      });
-      req.on("error", reject);
-    });
+    } catch {
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "invalid" }));
+      return;
+    }
   }
   try {
     const result = await handlePlatform(req.method, body);
@@ -170,9 +184,9 @@ export default async function handler(req, res) {
     }
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify(result.data));
-  } catch {
+  } catch (err) {
     res.statusCode = 500;
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "store" }));
+    res.end(JSON.stringify({ error: "store", message: String(err?.message || err) }));
   }
 }

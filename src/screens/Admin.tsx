@@ -11,8 +11,12 @@ type AdminTab = "home" | "users" | "tickets";
 export function AdminApp() {
   const s = useStore();
   const t = useT();
-  const [tab, setTab] = useState<AdminTab>("tickets");
+  const [tab, setTab] = useState<AdminTab>("users");
   const [picked, setPicked] = useState<string | null>(s.tickets[0]?.id ?? null);
+
+  useEffect(() => {
+    s.syncNow();
+  }, [s.syncNow]);
 
   if (!s.isAdmin) return <AdminLogin />;
 
@@ -196,6 +200,22 @@ function Overview({
           {t("unreadInbox")}
         </button>
       </div>
+      <h2>{t("adminUsers")}</h2>
+      {accounts.length === 0 ? (
+        <p className="credit-note">—</p>
+      ) : (
+        accounts.map((a) => (
+          <div key={a.id} className="admin-flag">
+            <div>
+              <strong>{a.name}</strong>
+              <span>
+                @{a.handle} · {a.phone} · {accountStatusLabel(s.lang, a.status)}
+              </span>
+            </div>
+            <StatusActions account={a} />
+          </div>
+        ))
+      )}
       <h2>{t("frozenAccounts")}</h2>
       {frozenList.length === 0 ? (
         <p className="credit-note">—</p>
@@ -244,6 +264,33 @@ function UsersTable({ users, onOpenTicket }: { users: UserAccount[]; onOpenTicke
   return (
     <div className="admin-users">
       <input className="admin-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${t("colName")} / ${t("colId")}`} />
+      {shown.length === 0 && <p className="credit-note">—</p>}
+      <div className="admin-user-cards">
+        {shown.map((a) => {
+          const tks = s.tickets.filter((tk) => tk.accountId === a.id);
+          return (
+            <article key={a.id} className={`admin-user-card ${a.status !== "active" ? a.status : ""}`}>
+              <div>
+                <strong>{a.name}</strong>
+                <span>
+                  @{a.handle} · {a.phone}
+                </span>
+                <span className={`t-status ${a.status}`}>{accountStatusLabel(s.lang, a.status)}</span>
+                <em>
+                  {yen(a.wallet.money + a.wallet.moneyLite)}
+                  {tks.length > 0 ? ` · ${tks.length} ${t("adminTickets")}` : ""}
+                </em>
+              </div>
+              {tks.length > 0 && (
+                <button className="linkish" type="button" onClick={() => onOpenTicket(a.id)}>
+                  {t("adminTickets")}
+                </button>
+              )}
+              <StatusActions account={a} />
+            </article>
+          );
+        })}
+      </div>
       <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>

@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -223,6 +224,7 @@ type Store = {
   sendMessage: (ticketId: string, text: string, as: "user" | "agent") => { ok: true } | { ok: false; reason: string };
   setTicketStatus: (ticketId: string, status: TicketStatus) => void;
   markTicketRead: (ticketId: string, who: "user" | "agent") => void;
+  syncNow: () => void;
   pay: (opts: {
     title: string;
     subtitle?: string;
@@ -243,14 +245,36 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
+async function postPlatform(body: object): Promise<PlatformData | null> {
+  try {
+    const res = await fetch("/api/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PlatformData;
+  } catch {
+    return null;
+  }
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<PlatformState>(() => ({
     ...loadData(),
     sessionId: loadSession(),
   }));
   const hydratedRef = useRef(false);
-  const dirtyRef = useRef(false);
   const lastPushFp = useRef("");
+
+  const applyRemote = useCallback((remote: PlatformData) => {
+    lastPushFp.current = fingerprint(remote);
+    setState((s) => {
+      const next = mergePlatform(s, remote);
+      if (fingerprint(next) === fingerprint(s)) return s;
+      return { ...s, accounts: next.accounts, tickets: next.tickets };
+    });
+  }, []);
 
   useEffect(() => {
     const { sessionId, ...data } = state;
@@ -265,7 +289,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!hydratedRef.current) return;
     const fp = fingerprint(data);
     if (fp === lastPushFp.current) return;
-    dirtyRef.current = true;
     const timer = window.setTimeout(async () => {
       try {
         const res = await fetch("/api/platform", {
@@ -274,38 +297,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ accounts: data.accounts, tickets: data.tickets, lang: data.lang }),
         });
         if (!res.ok) return;
-        const merged = (await res.json()) as PlatformData;
-        lastPushFp.current = fingerprint(merged);
-        setState((s) => {
-          const next = mergePlatform(s, merged);
-          if (fingerprint(next) === fingerprint(s)) return s;
-          return { ...s, accounts: next.accounts, tickets: next.tickets };
-        });
+        applyRemote((await res.json()) as PlatformData);
       } catch {
         /* offline: keep local copy */
-      } finally {
-        dirtyRef.current = false;
       }
-    }, 400);
+    }, 250);
     return () => window.clearTimeout(timer);
-  }, [state]);
+  }, [applyRemote, state]);
+
+  const pullRemote = useCallback(async () => {
+    try {
+      const res = await fetch("/api/platform", { cache: "no-store" });
+      if (!res.ok) return;
+      applyRemote((await res.json()) as PlatformData);
+    } catch {
+      /* offline */
+    }
+  }, [applyRemote]);
 
   useEffect(() => {
     let stop = false;
     const pull = async () => {
-      if (dirtyRef.current) return;
-      try {
-        const res = await fetch("/api/platform", { cache: "no-store" });
-        if (!res.ok || stop) return;
-        const remote = (await res.json()) as PlatformData;
-        setState((s) => {
-          const next = mergePlatform(s, remote);
-          if (fingerprint(next) === fingerprint(s)) return s;
-          return { ...s, accounts: next.accounts, tickets: next.tickets };
-        });
-      } catch {
-        /* offline */
-      }
+      if (stop) return;
+      await pullRemote();
     };
     (async () => {
       await pull();
@@ -313,7 +327,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       hydratedRef.current = true;
       setState((s) => ({ ...s }));
     })();
-    const id = window.setInterval(pull, 3000);
+    const id = window.setInterval(pull, 2000);
     const onVis = () => {
       if (document.visibilityState === "visible") void pull();
     };
@@ -323,7 +337,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [pullRemote]);
 
   useEffect(() => {
     const restoreSession = () => {
@@ -595,6 +609,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           lang: state.lang,
         });
         setState((s) => ({ ...s, accounts: [...s.accounts, acc], sessionId: acc.id }));
+        void postPlatform({ account: acc }).then((merged) => {
+          if (merged) applyRemote(merged);
+        });
         return { ok: true };
       },
       logout: () => setState((s) => ({ ...s, sessionId: null })),
@@ -680,6 +697,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ],
         };
         setState((s) => ({ ...s, tickets: [ticket, ...s.tickets] }));
+        void postPlatform({ ticket, account: current }).then((merged) => {
+          if (merged) applyRemote(merged);
+        });
         return { ok: true, ticket };
       },
       sendMessage: (ticketId, text, as) => {
@@ -756,6 +776,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : tk,
           ),
         }));
+      },
+      syncNow: () => {
+        void pullRemote();
       },
       pay,
       charge,

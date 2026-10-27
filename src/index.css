@@ -1489,7 +1489,38 @@ body:has(.admin-login) {
   background: #fff !important;
   box-shadow: var(--shadow-1);
 }
+.admin-user-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.admin-user-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-user-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-user-card strong { font-size: 15px; }
+.admin-user-card span { font-size: 12px; color: var(--gray-500); }
+.admin-user-card em { font-style: normal; font-size: 12px; font-weight: 700; }
+.admin-user-card.frozen { background: #fff7f8; }
+.admin-user-card.restricted { background: #fffaf0; }
+.admin-user-card.blocked { background: #f6f6f6; }
 .admin-table-wrap { overflow: auto; background: #fff; border-radius: 14px; -webkit-overflow-scrolling: touch; }
+@media (max-width: 900px) {
+  .admin-table-wrap { display: none; }
+}
+@media (min-width: 901px) {
+  .admin-user-cards { display: none; }
+}
 .admin-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }
 .admin-table th {
   text-align: left;
